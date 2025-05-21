@@ -1,0 +1,48 @@
+import cv2
+import pandas as pd
+import streamlit as st
+import numpy as np
+
+# Load color dataset
+color_data = pd.read_csv('colors.csv')
+
+def get_color_name(R, G, B):
+    """Find the closest matching color name from dataset"""
+    min_dist = float('inf')
+    color_name = "Unknown"
+
+    for i in range(len(color_data)):
+        d = np.sqrt((R - color_data.loc[i, "R"]) ** 2 +
+                    (G - color_data.loc[i, "G"]) ** 2 +
+                    (B - color_data.loc[i, "B"]) ** 2)
+        if d < min_dist:
+            min_dist = d
+            color_name = color_data.loc[i, "color_name"]
+
+    return color_name
+
+# Streamlit UI
+st.title("Color Detection from Images")
+uploaded_file = st.file_uploader("Upload an Image", type=["jpg", "png", "jpeg"])
+
+if uploaded_file is not None:
+    # Read and display image
+    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+    st.image(img_rgb, caption="Uploaded Image", use_column_width=True)
+
+    # Detect color from clicked point
+    st.write("Click anywhere on the image to detect the color")
+    coords = st.experimental_get_query_params()
+
+    if "x" in coords and "y" in coords:
+        x, y = int(coords["x"][0]), int(coords["y"][0])
+        B, G, R = img[y, x]  # OpenCV uses BGR format
+        color_name = get_color_name(R, G, B)
+
+        # Display detected color
+        st.write(f"Detected Color: **{color_name}**")
+        st.write(f"RGB: ({R}, {G}, {B})")
+        st.markdown(f'<div style="width:50px;height:50px;background-color:rgb({R},{G},{B})"></div>', unsafe_allow_html=True)
